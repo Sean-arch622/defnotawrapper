@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { TrackCard } from '@/components/TrackCard';
 import { searchYouTube } from '@/lib/youtube';
 import { storage, Track } from '@/lib/storage';
+import { usePlayer } from '@/contexts/PlayerContext';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 
@@ -25,6 +26,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [recentlyPlayed, setRecentlyPlayed] = useState<Track[]>([]);
   const navigate = useNavigate();
+  const { play } = usePlayer();
 
   useEffect(() => {
     setRecentlyPlayed(storage.getHistory().slice(0, 10));
@@ -75,7 +77,6 @@ export default function HomePage() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
-      {/* Search */}
       <div className="flex gap-2 mb-8">
         <div className="relative flex-1">
           <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -92,7 +93,6 @@ export default function HomePage() {
         </Button>
       </div>
 
-      {/* Search Results */}
       {searchResults.length > 0 && (
         <section className="mb-8">
           <h2 className="text-xl font-semibold mb-4 text-foreground">Search Results</h2>
@@ -104,7 +104,6 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* Genre Buttons */}
       {searchResults.length === 0 && (
         <>
           <section className="mb-8">
@@ -125,7 +124,6 @@ export default function HomePage() {
             </div>
           </section>
 
-          {/* Genre results */}
           {genreTracks.length > 0 && (
             <section className="mb-8">
               <h2 className="text-xl font-semibold mb-4 text-foreground">{activeGenre}</h2>
@@ -137,7 +135,6 @@ export default function HomePage() {
             </section>
           )}
 
-          {/* Trending */}
           {trendingSections.map(section => (
             <section key={section.title} className="mb-8">
               <h2 className="text-xl font-semibold mb-4 text-foreground">{section.title}</h2>
@@ -148,19 +145,20 @@ export default function HomePage() {
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: i * 0.05 }}
-                    className="group cursor-pointer"
-                    onClick={() => {
-                      const { play } = require('@/contexts/PlayerContext');
-                    }}
+                    className="cursor-pointer rounded-xl overflow-hidden bg-card hover:bg-accent transition-colors"
+                    onClick={() => play(track, section.tracks)}
                   >
-                    <TrendingCard track={track} tracks={section.tracks} />
+                    <img src={track.thumbnail} alt={track.title} className="w-full aspect-square object-cover" />
+                    <div className="p-3">
+                      <p className="text-sm font-medium truncate text-foreground">{track.title}</p>
+                      <p className="text-xs text-muted-foreground truncate">{track.artist}</p>
+                    </div>
                   </motion.div>
                 ))}
               </div>
             </section>
           ))}
 
-          {/* Recently Played */}
           {recentlyPlayed.length > 0 && (
             <section className="mb-8">
               <h2 className="text-xl font-semibold mb-4 text-foreground">Recently Played</h2>
@@ -172,7 +170,6 @@ export default function HomePage() {
             </section>
           )}
 
-          {/* No API key message */}
           {!storage.getApiKey() && trendingSections.length === 0 && (
             <div className="text-center py-20">
               <h2 className="text-2xl font-bold mb-2 text-foreground">Welcome to Muse</h2>
@@ -186,28 +183,4 @@ export default function HomePage() {
       )}
     </div>
   );
-}
-
-function TrendingCard({ track, tracks }: { track: Track; tracks: Track[] }) {
-  const { play } = require('@/contexts/PlayerContext').usePlayer ? require('@/contexts/PlayerContext') : { play: () => {} };
-  // We need usePlayer here but can't use hooks conditionally. Let's use a proper import.
-  return <TrendingCardInner track={track} tracks={tracks} />;
-}
-
-function TrendingCardInner({ track, tracks }: { track: Track; tracks: Track[] }) {
-  const { play } = await_player();
-  return (
-    <div className="rounded-xl overflow-hidden bg-card hover:bg-accent transition-colors" onClick={() => play(track, tracks)}>
-      <img src={track.thumbnail} alt={track.title} className="w-full aspect-square object-cover" />
-      <div className="p-3">
-        <p className="text-sm font-medium truncate text-foreground">{track.title}</p>
-        <p className="text-xs text-muted-foreground truncate">{track.artist}</p>
-      </div>
-    </div>
-  );
-}
-
-function await_player() {
-  // This is a workaround - we'll fix this properly
-  return { play: () => {} };
 }

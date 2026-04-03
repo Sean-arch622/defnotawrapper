@@ -26,29 +26,21 @@ export const storage = {
   getApiKey: (): string => localStorage.getItem('yt-api-key') || '',
   setApiKey: (key: string) => localStorage.setItem('yt-api-key', key),
 
-  getTheme: (): 'light' | 'dark' | 'system' => {
-    return (localStorage.getItem('yt-theme') as 'light' | 'dark' | 'system') || 'system';
-  },
-  setTheme: (theme: 'light' | 'dark' | 'system') => localStorage.setItem('yt-theme', theme),
+  getTheme: (): 'light' | 'dark' | 'system' => 'dark',
+  setTheme: () => {},
 
   getPlaylists: (): Playlist[] => {
-    try {
-      return JSON.parse(localStorage.getItem('yt-playlists') || '[]');
-    } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('yt-playlists') || '[]'); } catch { return []; }
   },
   setPlaylists: (playlists: Playlist[]) => localStorage.setItem('yt-playlists', JSON.stringify(playlists)),
 
   getLikedSongs: (): Track[] => {
-    try {
-      return JSON.parse(localStorage.getItem('yt-liked') || '[]');
-    } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('yt-liked') || '[]'); } catch { return []; }
   },
   setLikedSongs: (tracks: Track[]) => localStorage.setItem('yt-liked', JSON.stringify(tracks)),
 
   getHistory: (): Track[] => {
-    try {
-      return JSON.parse(localStorage.getItem('yt-history') || '[]');
-    } catch { return []; }
+    try { return JSON.parse(localStorage.getItem('yt-history') || '[]'); } catch { return []; }
   },
   addToHistory: (track: Track) => {
     const history = storage.getHistory().filter(t => t.id !== track.id);
@@ -56,6 +48,16 @@ export const storage = {
     localStorage.setItem('yt-history', JSON.stringify(history.slice(0, 50)));
   },
   clearHistory: () => localStorage.removeItem('yt-history'),
+
+  // Search history for personalization
+  getSearchHistory: (): string[] => {
+    try { return JSON.parse(localStorage.getItem('yt-search-history') || '[]'); } catch { return []; }
+  },
+  addSearchQuery: (query: string) => {
+    const hist = storage.getSearchHistory().filter(q => q !== query.toLowerCase());
+    hist.unshift(query.toLowerCase());
+    localStorage.setItem('yt-search-history', JSON.stringify(hist.slice(0, 30)));
+  },
 
   getCachedSearch: (query: string): Track[] | null => {
     try {
@@ -71,6 +73,6 @@ export const storage = {
       const filtered = cache.filter(c => c.query !== query.toLowerCase());
       filtered.unshift({ query: query.toLowerCase(), results, timestamp: Date.now() });
       localStorage.setItem('yt-search-cache', JSON.stringify(filtered.slice(0, 100)));
-    } catch { /* ignore */ }
+    } catch {}
   },
 };

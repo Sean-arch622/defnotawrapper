@@ -12,32 +12,38 @@ function parseDuration(iso: string): string {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+function durationToSeconds(iso: string): number {
+  const match = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if (!match) return 0;
+  return parseInt(match[1] || '0') * 3600 + parseInt(match[2] || '0') * 60 + parseInt(match[3] || '0');
+}
+
 function extractArtist(title: string, channelTitle: string): { songTitle: string; artist: string } {
-  // Try "Artist - Song Title" pattern
   const dashMatch = title.match(/^(.+?)\s*[-–—]\s*(.+)/);
   if (dashMatch) {
     let artist = dashMatch[1].trim();
     let songTitle = dashMatch[2].trim();
-    // Remove common suffixes
     songTitle = songTitle.replace(/\s*\(?(official\s*(music\s*)?video|official\s*audio|lyric\s*video|lyrics?|audio|mv|hd|hq|4k)\)?/gi, '').trim();
     return { songTitle: songTitle || title, artist };
   }
-  // Fallback: use channel name minus " - Topic" or "VEVO"
   const artist = channelTitle.replace(/\s*-\s*Topic$/i, '').replace(/VEVO$/i, '').trim();
   const songTitle = title.replace(/\s*\(?(official\s*(music\s*)?video|official\s*audio|lyric\s*video|lyrics?|audio|mv|hd|hq|4k)\)?/gi, '').trim();
   return { songTitle: songTitle || title, artist };
 }
 
+const MAX_DURATION_SECONDS = 600; // 10 minutes - filter out compilations
+
 export async function searchYouTube(query: string): Promise<Track[]> {
-  // Check cache first
   const cached = storage.getCachedSearch(query);
   if (cached) return cached;
 
   const apiKey = storage.getApiKey();
   if (!apiKey) throw new Error('No API key set. Go to Settings to add your YouTube API key.');
 
-  // Search for videos
-  const searchUrl = `${API_BASE}/search?part=snippet&type=video&videoCategoryId=10&maxResults=20&q=${encodeURIComponent(query)}&key=${apiKey}`;
+  // Save search query for personalization
+  storage.addSearchQuery(query);
+
+  const searchUrl = `${API_BASE}/search?part=snippet&type=video&videoCategoryId=10&maxResults=25&q=${encodeURIComponent(query)}&key=${apiKey}`;
   const searchRes = await fetch(searchUrl);
   if (!searchRes.ok) {
     const err = await searchRes.json().catch(() => ({}));
@@ -48,24 +54,28 @@ export async function searchYouTube(query: string): Promise<Track[]> {
   const videoIds = searchData.items?.map((item: any) => item.id.videoId).filter(Boolean).join(',');
   if (!videoIds) return [];
 
-  // Get video details for duration
   const detailsUrl = `${API_BASE}/videos?part=contentDetails,snippet&id=${videoIds}&key=${apiKey}`;
   const detailsRes = await fetch(detailsUrl);
   const detailsData = await detailsRes.json();
 
-  const tracks: Track[] = (detailsData.items || []).map((item: any) => {
-    const { songTitle, artist } = extractArtist(item.snippet.title, item.snippet.channelTitle);
-    return {
-      id: item.id,
-      title: songTitle,
-      artist,
-      thumbnail: item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url || '',
-      duration: parseDuration(item.contentDetails.duration),
-      videoId: item.id,
-    };
-  });
+  const tracks: Track[] = (detailsData.items || [])
+    .filter((item: any) => {
+      // Filter out long compilations/mixes (> 10 min)
+      const seconds = durationToSeconds(item.contentDetails.duration);
+      return seconds > 0 && seconds <= MAX_DURATION_SECONDS;
+    })
+    .map((item: any) => {
+      const { songTitle, artist } = extractArtist(item.snippet.title, item.snippet.channelTitle);
+      return {
+        id: item.id,
+        title: songTitle,
+        artist,
+        thumbnail: item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url || '',
+        duration: parseDuration(item.contentDetails.duration),
+        videoId: item.id,
+      };
+    });
 
-  // Cache results
   storage.setCachedSearch(query, tracks);
   return tracks;
 }

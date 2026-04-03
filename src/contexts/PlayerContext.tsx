@@ -37,6 +37,19 @@ interface PlayerContextType {
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
 
+// Media Session helper
+function updateMediaSession(track: Track, isPlaying: boolean) {
+  if (!('mediaSession' in navigator)) return;
+  navigator.mediaSession.metadata = new MediaMetadata({
+    title: track.title,
+    artist: track.artist,
+    artwork: [
+      { src: track.thumbnail, sizes: '320x180', type: 'image/jpeg' },
+    ],
+  });
+  navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+}
+
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -55,7 +68,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const previousVolumeRef = useRef(80);
   const adCheckRef = useRef(false);
 
-  // Create hidden container for YouTube player
   useEffect(() => {
     const div = document.createElement('div');
     div.id = 'yt-player-container';
@@ -65,9 +77,20 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     playerDiv.id = 'yt-player';
     div.appendChild(playerDiv);
     containerRef.current = div;
-
     return () => { div.remove(); };
   }, []);
+
+  // Setup Media Session action handlers
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return;
+    navigator.mediaSession.setActionHandler('play', () => resume());
+    navigator.mediaSession.setActionHandler('pause', () => pause());
+    navigator.mediaSession.setActionHandler('previoustrack', () => previous());
+    navigator.mediaSession.setActionHandler('nexttrack', () => next());
+    navigator.mediaSession.setActionHandler('seekto', (details) => {
+      if (details.seekTime !== undefined) seekTo(details.seekTime);
+    });
+  });
 
   const startProgressTracking = useCallback(() => {
     if (progressInterval.current) clearInterval(progressInterval.current);
@@ -107,7 +130,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       playerRef.current.destroy();
     }
 
-    // Re-create the player div
     const container = document.getElementById('yt-player-container');
     if (container) {
       const oldPlayer = document.getElementById('yt-player');
@@ -137,6 +159,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
           setIsPlaying(true);
           startProgressTracking();
           storage.addToHistory(track);
+          updateMediaSession(track, true);
         },
         onStateChange: (e: any) => {
           const state = e.data;
@@ -151,7 +174,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
           if (state === YT.PlayerState.PLAYING) {
             setIsPlaying(true);
             startProgressTracking();
-            // Best-effort ad detection: check if duration is suspiciously short
+            updateMediaSession(track, true);
             const dur = e.target.getDuration();
             if (dur > 0 && dur < 15 && !adCheckRef.current) {
               adCheckRef.current = true;
@@ -169,6 +192,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
           }
           if (state === YT.PlayerState.PAUSED) {
             setIsPlaying(false);
+            updateMediaSession(track, false);
           }
         },
         onError: () => {
@@ -239,10 +263,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   const next = useCallback(() => playNext(), [playNext]);
   const previous = useCallback(() => {
-    if (progress > 3) {
-      seekTo(0);
-      return;
-    }
+    if (progress > 3) { seekTo(0); return; }
     if (queue.length === 0) return;
     let prevIdx = queueIndex - 1;
     if (prevIdx < 0) prevIdx = repeat === 'all' ? queue.length - 1 : 0;

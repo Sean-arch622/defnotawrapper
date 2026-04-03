@@ -1,21 +1,22 @@
 import { usePlaylist } from '@/contexts/PlaylistContext';
 import { TrackCard } from '@/components/TrackCard';
 import { Heart } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export default function LikedSongsPage() {
   const { likedSongs } = usePlaylist();
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-primary/80 to-primary flex items-center justify-center">
-          <Heart className="h-8 w-8 text-primary-foreground fill-primary-foreground" />
+    <div className="px-4 pt-12 pb-4 max-w-lg mx-auto">
+      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-3 mb-6">
+        <div className="w-14 h-14 rounded-2xl bg-primary/20 flex items-center justify-center">
+          <Heart className="h-6 w-6 text-primary fill-primary" />
         </div>
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Liked Songs</h1>
-          <p className="text-muted-foreground">{likedSongs.length} songs</p>
+          <h1 className="text-2xl font-bold text-foreground">Liked Songs</h1>
+          <p className="text-sm text-muted-foreground">{likedSongs.length} songs</p>
         </div>
-      </div>
+      </motion.div>
 
       {likedSongs.length > 0 ? (
         <div className="space-y-1">
@@ -24,7 +25,7 @@ export default function LikedSongsPage() {
           ))}
         </div>
       ) : (
-        <p className="text-center text-muted-foreground py-12">Songs you like will appear here</p>
+        <p className="text-center text-muted-foreground py-12 text-sm">Songs you like will appear here</p>
       )}
     </div>
   );

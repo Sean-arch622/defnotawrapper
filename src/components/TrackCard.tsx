@@ -30,15 +30,15 @@ export function TrackCard({ track, trackList, index, showRemove, onRemove }: Tra
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: (index || 0) * 0.03, duration: 0.2 }}
-      className={`group flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-colors ${
-        isActive ? 'bg-primary/10' : 'hover:bg-accent'
+      transition={{ delay: (index || 0) * 0.02, duration: 0.2 }}
+      className={`flex items-center gap-3 p-3 rounded-2xl cursor-pointer transition-all active:scale-[0.98] ${
+        isActive ? 'bg-primary/10 border border-primary/20' : 'active:bg-accent'
       }`}
       onClick={() => play(track, trackList)}
     >
-      <div className="relative w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
+      <div className="relative w-12 h-12 rounded-xl overflow-hidden flex-shrink-0">
         <img src={track.thumbnail} alt={track.title} className="w-full h-full object-cover" />
         {isActive && (
           <div className="absolute inset-0 bg-primary/30 flex items-center justify-center">
@@ -63,17 +63,17 @@ export function TrackCard({ track, trackList, index, showRemove, onRemove }: Tra
         <p className="text-xs text-muted-foreground truncate">{track.artist}</p>
       </div>
 
-      <span className="text-xs text-muted-foreground mr-1">{track.duration}</span>
+      <span className="text-[11px] text-muted-foreground tabular-nums">{track.duration}</span>
 
-      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+      <div className="flex items-center" onClick={e => e.stopPropagation()}>
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toggleLike(track)}>
-          <Heart className={`h-4 w-4 ${liked ? 'fill-primary text-primary' : ''}`} />
+          <Heart className={`h-4 w-4 ${liked ? 'fill-primary text-primary' : 'text-muted-foreground'}`} />
         </Button>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="h-8 w-8">
-              <MoreHorizontal className="h-4 w-4" />
+              <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">

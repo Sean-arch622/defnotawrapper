@@ -89,7 +89,6 @@ export default function SettingsPage() {
                     style={{
                       backgroundColor: `hsl(${color.h}, ${color.s}%, ${color.l}%)`,
                       boxShadow: isSelected ? `0 0 12px hsl(${color.h}, ${color.s}%, ${color.l}% / 0.5)` : undefined,
-                      ringColor: `hsl(${color.h}, ${color.s}%, ${color.l}%)`,
                     }}
                   >
                     {isSelected && <Check className="h-4 w-4 text-white" />}

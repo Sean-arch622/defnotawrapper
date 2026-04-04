@@ -5,7 +5,7 @@ import { TrackCard } from '@/components/TrackCard';
 import { searchYouTube } from '@/lib/youtube';
 import { Track } from '@/lib/storage';
 import { toast } from 'sonner';
-import { motion } from 'framer-motion';
+import { BlurFade } from '@/components/ui/blur-fade';
 
 export default function SearchPage() {
   const [query, setQuery] = useState('');
@@ -27,17 +27,21 @@ export default function SearchPage() {
 
   return (
     <div className="px-4 pt-12 pb-4 max-w-lg mx-auto">
-      <h1 className="text-2xl font-bold mb-5 text-foreground">Search</h1>
-      <div className="relative mb-5">
-        <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="What do you want to listen to?"
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleSearch()}
-          className="pl-11 h-12 rounded-2xl bg-card border-border/50 text-sm"
-        />
-      </div>
+      <BlurFade delay={0}>
+        <h1 className="text-2xl font-bold mb-5 text-foreground">Search</h1>
+      </BlurFade>
+      <BlurFade delay={0.05}>
+        <div className="relative mb-5">
+          <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="What do you want to listen to?"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleSearch()}
+            className="pl-11 h-12 rounded-2xl bg-card border-border/50 text-sm"
+          />
+        </div>
+      </BlurFade>
 
       {loading && (
         <div className="flex justify-center py-12">
@@ -46,11 +50,13 @@ export default function SearchPage() {
       )}
 
       {!loading && results.length > 0 && (
-        <div className="space-y-1">
-          {results.map((track, i) => (
-            <TrackCard key={track.id} track={track} trackList={results} index={i} />
-          ))}
-        </div>
+        <BlurFade delay={0.1}>
+          <div className="space-y-1">
+            {results.map((track, i) => (
+              <TrackCard key={track.id} track={track} trackList={results} index={i} />
+            ))}
+          </div>
+        </BlurFade>
       )}
 
       {!loading && results.length === 0 && query && (
@@ -58,13 +64,11 @@ export default function SearchPage() {
       )}
 
       {!query && (
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-center text-muted-foreground py-16 text-sm"
-        >
-          Search for your favorite songs, artists, or albums
-        </motion.p>
+        <BlurFade delay={0.1}>
+          <p className="text-center text-muted-foreground py-16 text-sm">
+            Search for your favorite songs, artists, or albums
+          </p>
+        </BlurFade>
       )}
     </div>
   );

@@ -97,6 +97,13 @@
     box-shadow: 0 0 8px hsl(var(--primary) / 0.6), 0 0 16px hsl(var(--primary) / 0.3);
   }
 
+  /* Smaller slider thumb for player */
+  .player-slider [data-orientation="horizontal"] > span > span {
+    width: 10px !important;
+    height: 10px !important;
+  }
+}
+
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }

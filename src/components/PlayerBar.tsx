@@ -38,18 +38,9 @@ export function PlayerBar({ onQueueOpen }: PlayerBarProps) {
         className="fixed bottom-[72px] left-0 right-0 z-50 px-3"
       >
         <div className="rounded-2xl border border-border/20 bg-card/80 backdrop-blur-xl shadow-lg shadow-black/30 overflow-hidden">
-          {/* Thin progress line at top of card */}
-          <div className="h-[2px] bg-muted/30 w-full">
-            <motion.div
-              className="h-full bg-primary rounded-full"
-              style={{ width: `${pct}%` }}
-              transition={{ duration: 0.3, ease: 'linear' }}
-            />
-          </div>
-
-          <div className="px-3 py-2">
+          <div className="px-3 py-2.5">
             {/* Track info + time */}
-            <div className="flex items-center gap-3 mb-1.5">
+            <div className="flex items-center gap-3 mb-2">
               <motion.img
                 key={currentTrack.id}
                 initial={{ scale: 0.8, opacity: 0 }}
@@ -73,35 +64,34 @@ export function PlayerBar({ onQueueOpen }: PlayerBarProps) {
               max={duration || 100}
               step={1}
               onValueChange={([v]) => seekTo(v)}
-              className="w-full h-4 mb-1"
+              className="w-full h-3 mb-2"
             />
 
             {/* Controls */}
             <div className="flex items-center justify-between">
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleShuffle}>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={toggleShuffle}>
                 <Shuffle className={`h-3.5 w-3.5 ${shuffle ? 'text-primary' : 'text-muted-foreground'}`} />
               </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={previous}>
-                <SkipBack className="h-4 w-4" />
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={previous}>
+                <SkipBack className="h-3.5 w-3.5" />
               </Button>
               <motion.div whileTap={{ scale: 0.92 }}>
                 <Button
                   size="icon"
-                  className="h-10 w-10 rounded-full bg-primary text-primary-foreground"
-                  style={{ boxShadow: '0 0 16px hsl(var(--primary) / 0.4)' }}
+                  className="h-8 w-8 rounded-full bg-primary text-primary-foreground"
                   onClick={togglePlay}
                 >
-                  {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 ml-0.5" />}
+                  {isPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5 ml-0.5" />}
                 </Button>
               </motion.div>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={next}>
-                <SkipForward className="h-4 w-4" />
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={next}>
+                <SkipForward className="h-3.5 w-3.5" />
               </Button>
               <div className="flex items-center">
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={cycleRepeat}>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={cycleRepeat}>
                   <RepeatIcon className={`h-3.5 w-3.5 ${repeat !== 'off' ? 'text-primary' : 'text-muted-foreground'}`} />
                 </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onQueueOpen}>
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onQueueOpen}>
                   <ListMusic className="h-3.5 w-3.5 text-muted-foreground" />
                 </Button>
               </div>

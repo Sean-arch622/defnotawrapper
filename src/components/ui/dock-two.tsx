@@ -32,14 +32,6 @@ const DockIconButton = React.forwardRef<HTMLButtonElement, DockIconButtonProps>(
           className
         )}
       >
-        {isActive && (
-          <motion.div
-            layoutId="dock-indicator"
-            className="absolute -top-1 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full bg-primary"
-            style={{ boxShadow: '0 0 8px hsl(var(--primary))' }}
-            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-          />
-        )}
         <Icon className={cn("h-5 w-5", isActive ? "text-primary" : "text-muted-foreground")} />
         <span className={cn("text-[10px]", isActive ? "text-primary font-medium" : "text-muted-foreground")}>
           {label}

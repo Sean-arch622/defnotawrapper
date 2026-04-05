@@ -10,6 +10,8 @@ import { BlurFade } from '@/components/ui/blur-fade';
 
 export default function SettingsPage() {
   const [apiKey, setApiKey] = useState(storage.getApiKey());
+  const [spotifyId, setSpotifyId] = useState(storage.getSpotifyClientId());
+  const [spotifySecret, setSpotifySecret] = useState(storage.getSpotifyClientSecret());
   const { accentColor, setAccentColor } = useTheme();
   const { exportPlaylists, importPlaylists } = usePlaylist();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -17,6 +19,12 @@ export default function SettingsPage() {
   const saveApiKey = () => {
     storage.setApiKey(apiKey);
     toast.success('API key saved');
+  };
+
+  const saveSpotifyKeys = () => {
+    storage.setSpotifyClientId(spotifyId);
+    storage.setSpotifyClientSecret(spotifySecret);
+    toast.success('Spotify credentials saved');
   };
 
   const handleExport = () => {

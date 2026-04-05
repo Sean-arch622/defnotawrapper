@@ -26,6 +26,11 @@ export const storage = {
   getApiKey: (): string => localStorage.getItem('yt-api-key') || '',
   setApiKey: (key: string) => localStorage.setItem('yt-api-key', key),
 
+  getSpotifyClientId: (): string => localStorage.getItem('spotify-client-id') || '',
+  setSpotifyClientId: (id: string) => localStorage.setItem('spotify-client-id', id),
+  getSpotifyClientSecret: (): string => localStorage.getItem('spotify-client-secret') || '',
+  setSpotifyClientSecret: (secret: string) => localStorage.setItem('spotify-client-secret', secret),
+
   getTheme: (): 'light' | 'dark' | 'system' => 'dark',
   setTheme: () => {},
 

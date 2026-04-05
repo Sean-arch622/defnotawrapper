@@ -12,30 +12,60 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog';
 
-async function parseSpotifyPlaylist(url: string): Promise<{ name: string; tracks: string[] } | null> {
-  try {
-    // Use a CORS proxy or direct fetch to get the Spotify page
-    // We'll parse the oEmbed endpoint which doesn't require auth
-    const playlistId = url.match(/playlist\/([a-zA-Z0-9]+)/)?.[1];
-    if (!playlistId) return null;
+// --- Spotify API helpers ---
 
-    const oembedUrl = `https://open.spotify.com/oembed?url=https://open.spotify.com/playlist/${playlistId}`;
-    const res = await fetch(oembedUrl);
-    if (!res.ok) return null;
-    const data = await res.json();
+async function getSpotifyToken(): Promise<string> {
+  const clientId = storage.getSpotifyClientId();
+  const clientSecret = storage.getSpotifyClientSecret();
+  if (!clientId || !clientSecret) throw new Error('missing_spotify_keys');
 
-    // Extract playlist name from oembed title
-    const name = data.title || 'Imported Playlist';
-
-    // Parse track names from the iframe HTML or description
-    // Since oEmbed doesn't give track list, we'll use the page title
-    // and search each track on YouTube
-    // For now, we get the name and ask user to know it works with limited info
-    return { name, tracks: [] };
-  } catch {
-    return null;
-  }
+  const res = await fetch('https://accounts.spotify.com/api/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Authorization: 'Basic ' + btoa(`${clientId}:${clientSecret}`),
+    },
+    body: 'grant_type=client_credentials',
+  });
+  if (!res.ok) throw new Error('Spotify auth failed — check your Client ID and Secret');
+  const data = await res.json();
+  return data.access_token;
 }
+
+interface SpotifyTrackInfo { name: string; artist: string }
+
+async function fetchSpotifyPlaylist(
+  playlistId: string,
+  token: string,
+): Promise<{ name: string; tracks: SpotifyTrackInfo[] }> {
+  // Get playlist name
+  const metaRes = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}?fields=name`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!metaRes.ok) throw new Error('Failed to fetch playlist — is it public?');
+  const meta = await metaRes.json();
+
+  // Paginate tracks
+  const tracks: SpotifyTrackInfo[] = [];
+  let url: string | null = `https://api.spotify.com/v1/playlists/${playlistId}/tracks?fields=items(track(name,artists(name))),next&limit=100`;
+
+  while (url) {
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) break;
+    const data = await res.json();
+    for (const item of data.items || []) {
+      const t = item.track;
+      if (t?.name) {
+        tracks.push({ name: t.name, artist: t.artists?.[0]?.name || '' });
+      }
+    }
+    url = data.next || null;
+  }
+
+  return { name: meta.name || 'Imported Playlist', tracks };
+}
+
+const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 export default function LibraryPage() {
   const { playlists, createPlaylist, deletePlaylist, renamePlaylist, addToPlaylist } = usePlaylist();
@@ -45,6 +75,7 @@ export default function LibraryPage() {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [spotifyUrl, setSpotifyUrl] = useState('');
   const [importLoading, setImportLoading] = useState(false);
+  const [importProgress, setImportProgress] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const { likedSongs } = usePlaylist();
@@ -59,7 +90,9 @@ export default function LibraryPage() {
 
   const handleSpotifyImport = async () => {
     if (!spotifyUrl.trim()) return;
-    if (!spotifyUrl.includes('spotify.com/playlist/')) {
+
+    const playlistId = spotifyUrl.match(/playlist\/([a-zA-Z0-9]+)/)?.[1];
+    if (!playlistId) {
       toast.error('Please enter a valid Spotify playlist link');
       return;
     }
@@ -69,128 +102,72 @@ export default function LibraryPage() {
     }
 
     setImportLoading(true);
+    setImportProgress('Authenticating with Spotify...');
+
     try {
-      const playlistSpotifyId = spotifyUrl.match(/playlist\/([a-zA-Z0-9]+)/)?.[1];
-      if (!playlistSpotifyId) {
-        toast.error('Invalid playlist link');
+      let token: string;
+      try {
+        token = await getSpotifyToken();
+      } catch (e: any) {
+        if (e.message === 'missing_spotify_keys') {
+          toast.error('Add your Spotify Client ID & Secret in Settings first');
+          setImportLoading(false);
+          setImportProgress('');
+          return;
+        }
+        throw e;
+      }
+
+      setImportProgress('Fetching playlist tracks...');
+      const { name: playlistName, tracks: spotifyTracks } = await fetchSpotifyPlaylist(playlistId, token);
+
+      if (spotifyTracks.length === 0) {
+        toast.info(`"${playlistName}" has no tracks`);
         setImportLoading(false);
+        setImportProgress('');
         return;
       }
 
-      // Get playlist name from oEmbed
-      const oembedRes = await fetch(`https://open.spotify.com/oembed?url=https://open.spotify.com/playlist/${playlistSpotifyId}`);
-      const oembedData = await oembedRes.json();
-      const playlistName = oembedData.title || 'Imported Playlist';
-
-      // Fetch the embed page via CORS proxy to extract track names
-      let trackNames: string[] = [];
-      const corsProxies = [
-        `https://corsproxy.io/?${encodeURIComponent(`https://open.spotify.com/playlist/${playlistSpotifyId}`)}`,
-        `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://open.spotify.com/playlist/${playlistSpotifyId}`)}`,
-      ];
-
-      for (const proxyUrl of corsProxies) {
-        if (trackNames.length > 0) break;
-        try {
-          const res = await fetch(proxyUrl);
-          if (!res.ok) continue;
-          const html = await res.text();
-
-          // Try to extract from meta tags (og:description often has track list)
-          const descMatch = html.match(/<meta[^>]*property="og:description"[^>]*content="([^"]+)"/i) 
-            || html.match(/<meta[^>]*content="([^"]+)"[^>]*property="og:description"/i);
-          if (descMatch) {
-            // Spotify descriptions list tracks like "Song · Artist, Song · Artist, ..."
-            const desc = descMatch[1];
-            const songs = desc.split(/[,·]/).map(s => s.trim()).filter(s => s.length > 1 && s.length < 80);
-            // Group pairs: "Song" and "Artist" alternate with · and , separators
-            // Actually the format is: "Song · Artist, Song · Artist" 
-            // Let's re-parse properly
-            const pairs = desc.split(',').map(s => s.trim()).filter(Boolean);
-            for (const pair of pairs) {
-              // Each pair is "Song · Artist" or just a song name
-              const parts = pair.split('·').map(p => p.trim()).filter(Boolean);
-              if (parts.length >= 2) {
-                // "Song · Artist" - search "Song Artist"
-                trackNames.push(`${parts[0]} ${parts[1]}`);
-              } else if (parts[0] && parts[0].length > 2) {
-                trackNames.push(parts[0]);
-              }
-            }
-          }
-
-          // Also try JSON-LD or inline JSON with track data
-          const jsonLdMatch = html.match(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/i);
-          if (jsonLdMatch && trackNames.length === 0) {
-            try {
-              const ld = JSON.parse(jsonLdMatch[1]);
-              if (ld.track) {
-                for (const t of ld.track) {
-                  const name = t.name || t.title;
-                  const artist = t.byArtist?.name || '';
-                  if (name) trackNames.push(artist ? `${name} ${artist}` : name);
-                }
-              }
-            } catch {}
-          }
-
-          // Try Spotify's __NEXT_DATA__ or resource JSON
-          const nextDataMatch = html.match(/<script[^>]*id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
-          if (nextDataMatch && trackNames.length === 0) {
-            try {
-              const data = JSON.parse(nextDataMatch[1]);
-              const items = data?.props?.pageProps?.state?.data?.entity?.trackList || [];
-              for (const item of items) {
-                const name = item?.track?.name;
-                const artist = item?.track?.artists?.[0]?.name;
-                if (name) trackNames.push(artist ? `${name} ${artist}` : name);
-              }
-            } catch {}
-          }
-        } catch {}
-      }
-
-      // Deduplicate and limit
-      trackNames = [...new Set(trackNames)].slice(0, 50);
-
-      // Create the playlist
+      // Create playlist
       createPlaylist(playlistName);
-      await new Promise(r => setTimeout(r, 200));
+      await delay(200);
 
-      if (trackNames.length === 0) {
-        toast.info(`Created "${playlistName}" but couldn't extract tracks. Try adding songs manually.`);
-        setSpotifyUrl('');
-        setImportDialogOpen(false);
-        setImportLoading(false);
-        return;
-      }
+      let matched = 0;
+      let skipped = 0;
+      const total = spotifyTracks.length;
 
-      toast.success(`Importing "${playlistName}" — searching ${trackNames.length} tracks...`);
+      for (let i = 0; i < total; i++) {
+        const { name, artist } = spotifyTracks[i];
+        setImportProgress(`Matching ${i + 1} of ${total} tracks...`);
 
-      let addedCount = 0;
-      for (const trackName of trackNames) {
         try {
-          const results = await searchYouTube(trackName);
+          const results = await searchYouTube(`${name} ${artist}`, false);
           if (results.length > 0) {
             const currentPlaylists = storage.getPlaylists();
-            const targetPlaylist = currentPlaylists.find(p => p.name === playlistName);
-            if (targetPlaylist) {
-              if (!targetPlaylist.tracks.some(t => t.id === results[0].id)) {
-                targetPlaylist.tracks.push(results[0]);
-                storage.setPlaylists(currentPlaylists);
-                addedCount++;
-              }
+            const target = currentPlaylists.find(p => p.name === playlistName);
+            if (target && !target.tracks.some(t => t.id === results[0].id)) {
+              target.tracks.push(results[0]);
+              storage.setPlaylists(currentPlaylists);
+              matched++;
             }
+          } else {
+            skipped++;
           }
-        } catch {}
+        } catch {
+          skipped++;
+        }
+
+        // Rate limit: 300ms between YouTube searches
+        if (i < total - 1) await delay(300);
       }
 
-      toast.success(`Imported ${addedCount} tracks to "${playlistName}"`);
+      toast.success(`Imported ${matched} of ${total} tracks from "${playlistName}"${skipped > 0 ? ` (${skipped} skipped)` : ''}`);
       window.location.reload();
     } catch (e: any) {
       toast.error('Import failed: ' + (e.message || 'Unknown error'));
     } finally {
       setImportLoading(false);
+      setImportProgress('');
       setSpotifyUrl('');
       setImportDialogOpen(false);
     }
@@ -220,14 +197,16 @@ export default function LibraryPage() {
                     onChange={e => setSpotifyUrl(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleSpotifyImport()}
                     className="rounded-xl"
+                    disabled={importLoading}
                   />
+                  {importLoading && importProgress && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin shrink-0" />
+                      <span>{importProgress}</span>
+                    </div>
+                  )}
                   <Button onClick={handleSpotifyImport} disabled={importLoading} className="rounded-xl">
-                    {importLoading ? (
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-                        Importing...
-                      </div>
-                    ) : 'Import'}
+                    {importLoading ? 'Importing...' : '🎵 Import Playlist'}
                   </Button>
                 </div>
               </DialogContent>

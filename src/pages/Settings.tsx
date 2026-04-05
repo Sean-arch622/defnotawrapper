@@ -10,6 +10,8 @@ import { BlurFade } from '@/components/ui/blur-fade';
 
 export default function SettingsPage() {
   const [apiKey, setApiKey] = useState(storage.getApiKey());
+  const [spotifyId, setSpotifyId] = useState(storage.getSpotifyClientId());
+  const [spotifySecret, setSpotifySecret] = useState(storage.getSpotifyClientSecret());
   const { accentColor, setAccentColor } = useTheme();
   const { exportPlaylists, importPlaylists } = usePlaylist();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -17,6 +19,12 @@ export default function SettingsPage() {
   const saveApiKey = () => {
     storage.setApiKey(apiKey);
     toast.success('API key saved');
+  };
+
+  const saveSpotifyKeys = () => {
+    storage.setSpotifyClientId(spotifyId);
+    storage.setSpotifyClientSecret(spotifySecret);
+    toast.success('Spotify credentials saved');
   };
 
   const handleExport = () => {
@@ -64,6 +72,27 @@ export default function SettingsPage() {
               Get a free key from the{' '}
               <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener" className="text-primary underline">
                 Google Cloud Console
+              </a>
+            </p>
+          </div>
+        </BlurFade>
+
+        <BlurFade delay={0.08}>
+          <div className="glass-card rounded-2xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Key className="h-4 w-4 text-primary" />
+              <h2 className="text-sm font-semibold text-foreground">Spotify API Credentials</h2>
+            </div>
+            <p className="text-xs text-muted-foreground mb-3">Required for importing Spotify playlists</p>
+            <div className="space-y-2">
+              <Input type="password" value={spotifyId} onChange={e => setSpotifyId(e.target.value)} placeholder="Client ID" className="h-10 rounded-xl bg-background border-border/50 text-sm" />
+              <Input type="password" value={spotifySecret} onChange={e => setSpotifySecret(e.target.value)} placeholder="Client Secret" className="h-10 rounded-xl bg-background border-border/50 text-sm" />
+              <Button onClick={saveSpotifyKeys} className="rounded-xl h-10 px-5 w-full">Save</Button>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-2">
+              Get credentials from the{' '}
+              <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener" className="text-primary underline">
+                Spotify Developer Dashboard
               </a>
             </p>
           </div>

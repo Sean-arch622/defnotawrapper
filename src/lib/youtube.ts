@@ -33,15 +33,15 @@ function extractArtist(title: string, channelTitle: string): { songTitle: string
 
 const MAX_DURATION_SECONDS = 600; // 10 minutes - filter out compilations
 
-export async function searchYouTube(query: string): Promise<Track[]> {
+export async function searchYouTube(query: string, saveToHistory = true): Promise<Track[]> {
   const cached = storage.getCachedSearch(query);
   if (cached) return cached;
 
   const apiKey = storage.getApiKey();
   if (!apiKey) throw new Error('No API key set. Go to Settings to add your YouTube API key.');
 
-  // Save search query for personalization
-  storage.addSearchQuery(query);
+  // Save search query for personalization (only user-initiated searches)
+  if (saveToHistory) storage.addSearchQuery(query);
 
   const searchUrl = `${API_BASE}/search?part=snippet&type=video&videoCategoryId=10&maxResults=25&q=${encodeURIComponent(query)}&key=${apiKey}`;
   const searchRes = await fetch(searchUrl);

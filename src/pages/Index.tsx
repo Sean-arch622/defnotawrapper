@@ -45,12 +45,15 @@ export default function HomePage() {
       .map(([artist]) => artist);
 
     topArtists.forEach(artist => {
-      personalQueries.push({ title: `More from ${artist}`, query: `${artist} songs official audio` });
+      personalQueries.push({ title: `More from ${artist}`, query: `${artist} official audio` });
     });
 
     searchHistory.slice(0, 2).forEach(q => {
       if (!topArtists.some(a => q.toLowerCase().includes(a.toLowerCase()))) {
-        personalQueries.push({ title: `Because you searched "${q}"`, query: `${q} similar songs official audio` });
+        // Clean the query - only use the original search term
+        const cleanQuery = q.replace(/\s*(similar songs|official audio|songs)\s*/gi, '').trim();
+        const displayQuery = cleanQuery || q;
+        personalQueries.push({ title: `Because you searched "${displayQuery}"`, query: `${displayQuery} similar songs` });
       }
     });
 
@@ -63,7 +66,7 @@ export default function HomePage() {
 
     personalQueries.slice(0, 3).forEach(async ({ title, query }) => {
       try {
-        const tracks = await searchYouTube(query);
+        const tracks = await searchYouTube(query, false);
         setPersonalizedSections(prev => {
           if (prev.some(s => s.title === title)) return prev;
           return [...prev, { title, tracks: tracks.slice(0, 6) }];

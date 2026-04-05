@@ -70,68 +70,108 @@ export default function LibraryPage() {
 
     setImportLoading(true);
     try {
-      const parsed = await parseSpotifyPlaylist(spotifyUrl);
-      if (!parsed) {
-        toast.error('Could not parse Spotify playlist');
+      const playlistSpotifyId = spotifyUrl.match(/playlist\/([a-zA-Z0-9]+)/)?.[1];
+      if (!playlistSpotifyId) {
+        toast.error('Invalid playlist link');
         setImportLoading(false);
         return;
       }
 
-      // Create the playlist with the Spotify name
-      const playlistId = crypto.randomUUID();
-      const playlistName = parsed.name;
+      // Get playlist name from oEmbed
+      const oembedRes = await fetch(`https://open.spotify.com/oembed?url=https://open.spotify.com/playlist/${playlistSpotifyId}`);
+      const oembedData = await oembedRes.json();
+      const playlistName = oembedData.title || 'Imported Playlist';
 
-      // We'll try to fetch the embed page to get track names
-      const playlistSpotifyId = spotifyUrl.match(/playlist\/([a-zA-Z0-9]+)/)?.[1];
+      // Fetch the embed page via CORS proxy to extract track names
       let trackNames: string[] = [];
+      const corsProxies = [
+        `https://corsproxy.io/?${encodeURIComponent(`https://open.spotify.com/playlist/${playlistSpotifyId}`)}`,
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://open.spotify.com/playlist/${playlistSpotifyId}`)}`,
+      ];
 
-      // Try fetching the embed page to extract track info
-      try {
-        const embedRes = await fetch(`https://open.spotify.com/embed/playlist/${playlistSpotifyId}`);
-        if (embedRes.ok) {
-          const html = await embedRes.text();
-          // Extract track titles from the embed HTML
-          const trackMatches = html.match(/"name":"([^"]+)"/g);
-          if (trackMatches) {
-            trackNames = trackMatches
-              .map(m => m.match(/"name":"([^"]+)"/)?.[1] || '')
-              .filter(Boolean)
-              .filter((name, i, arr) => arr.indexOf(name) === i) // dedupe
-              .slice(0, 30); // limit to 30 tracks
+      for (const proxyUrl of corsProxies) {
+        if (trackNames.length > 0) break;
+        try {
+          const res = await fetch(proxyUrl);
+          if (!res.ok) continue;
+          const html = await res.text();
+
+          // Try to extract from meta tags (og:description often has track list)
+          const descMatch = html.match(/<meta[^>]*property="og:description"[^>]*content="([^"]+)"/i) 
+            || html.match(/<meta[^>]*content="([^"]+)"[^>]*property="og:description"/i);
+          if (descMatch) {
+            // Spotify descriptions list tracks like "Song · Artist, Song · Artist, ..."
+            const desc = descMatch[1];
+            const songs = desc.split(/[,·]/).map(s => s.trim()).filter(s => s.length > 1 && s.length < 80);
+            // Group pairs: "Song" and "Artist" alternate with · and , separators
+            // Actually the format is: "Song · Artist, Song · Artist" 
+            // Let's re-parse properly
+            const pairs = desc.split(',').map(s => s.trim()).filter(Boolean);
+            for (const pair of pairs) {
+              // Each pair is "Song · Artist" or just a song name
+              const parts = pair.split('·').map(p => p.trim()).filter(Boolean);
+              if (parts.length >= 2) {
+                // "Song · Artist" - search "Song Artist"
+                trackNames.push(`${parts[0]} ${parts[1]}`);
+              } else if (parts[0] && parts[0].length > 2) {
+                trackNames.push(parts[0]);
+              }
+            }
           }
-        }
-      } catch {}
 
-      // If we couldn't get tracks from embed, try searching with the playlist name
+          // Also try JSON-LD or inline JSON with track data
+          const jsonLdMatch = html.match(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/i);
+          if (jsonLdMatch && trackNames.length === 0) {
+            try {
+              const ld = JSON.parse(jsonLdMatch[1]);
+              if (ld.track) {
+                for (const t of ld.track) {
+                  const name = t.name || t.title;
+                  const artist = t.byArtist?.name || '';
+                  if (name) trackNames.push(artist ? `${name} ${artist}` : name);
+                }
+              }
+            } catch {}
+          }
+
+          // Try Spotify's __NEXT_DATA__ or resource JSON
+          const nextDataMatch = html.match(/<script[^>]*id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+          if (nextDataMatch && trackNames.length === 0) {
+            try {
+              const data = JSON.parse(nextDataMatch[1]);
+              const items = data?.props?.pageProps?.state?.data?.entity?.trackList || [];
+              for (const item of items) {
+                const name = item?.track?.name;
+                const artist = item?.track?.artists?.[0]?.name;
+                if (name) trackNames.push(artist ? `${name} ${artist}` : name);
+              }
+            } catch {}
+          }
+        } catch {}
+      }
+
+      // Deduplicate and limit
+      trackNames = [...new Set(trackNames)].slice(0, 50);
+
+      // Create the playlist
+      createPlaylist(playlistName);
+      await new Promise(r => setTimeout(r, 200));
+
       if (trackNames.length === 0) {
-        // Search for the playlist name to get some relevant tracks
-        const results = await searchYouTube(playlistName);
-        createPlaylist(playlistName);
-        const newPlaylist = playlists.find(p => p.name === playlistName);
-        if (newPlaylist) {
-          results.slice(0, 15).forEach(track => addToPlaylist(newPlaylist.id, track));
-        }
-        toast.success(`Created "${playlistName}" with search results`);
+        toast.info(`Created "${playlistName}" but couldn't extract tracks. Try adding songs manually.`);
         setSpotifyUrl('');
         setImportDialogOpen(false);
         setImportLoading(false);
         return;
       }
 
-      // Search YouTube for each track
-      createPlaylist(playlistName);
-      // Need to wait a tick for state to update
-      await new Promise(r => setTimeout(r, 100));
-
       toast.success(`Importing "${playlistName}" — searching ${trackNames.length} tracks...`);
 
-      // Search and add tracks one by one
       let addedCount = 0;
       for (const trackName of trackNames) {
         try {
           const results = await searchYouTube(trackName);
           if (results.length > 0) {
-            // We need to find the playlist we just created
             const currentPlaylists = storage.getPlaylists();
             const targetPlaylist = currentPlaylists.find(p => p.name === playlistName);
             if (targetPlaylist) {
@@ -145,9 +185,8 @@ export default function LibraryPage() {
         } catch {}
       }
 
-      // Refresh playlists from storage
-      window.location.reload();
       toast.success(`Imported ${addedCount} tracks to "${playlistName}"`);
+      window.location.reload();
     } catch (e: any) {
       toast.error('Import failed: ' + (e.message || 'Unknown error'));
     } finally {

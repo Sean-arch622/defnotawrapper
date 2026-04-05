@@ -197,14 +197,16 @@ export default function LibraryPage() {
                     onChange={e => setSpotifyUrl(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleSpotifyImport()}
                     className="rounded-xl"
+                    disabled={importLoading}
                   />
+                  {importLoading && importProgress && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin shrink-0" />
+                      <span>{importProgress}</span>
+                    </div>
+                  )}
                   <Button onClick={handleSpotifyImport} disabled={importLoading} className="rounded-xl">
-                    {importLoading ? (
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-                        Importing...
-                      </div>
-                    ) : 'Import'}
+                    {importLoading ? 'Importing...' : '🎵 Import Playlist'}
                   </Button>
                 </div>
               </DialogContent>

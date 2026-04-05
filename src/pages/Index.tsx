@@ -66,7 +66,7 @@ export default function HomePage() {
 
     personalQueries.slice(0, 3).forEach(async ({ title, query }) => {
       try {
-        const tracks = await searchYouTube(query);
+        const tracks = await searchYouTube(query, false);
         setPersonalizedSections(prev => {
           if (prev.some(s => s.title === title)) return prev;
           return [...prev, { title, tracks: tracks.slice(0, 6) }];

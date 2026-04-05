@@ -59,13 +59,15 @@ export function PlayerBar({ onQueueOpen }: PlayerBarProps) {
             </div>
 
             {/* Seekable slider */}
-            <Slider
-              value={[progress]}
-              max={duration || 100}
-              step={1}
-              onValueChange={([v]) => seekTo(v)}
-              className="w-full h-3 mb-2"
-            />
+            <div className="player-slider">
+              <Slider
+                value={[progress]}
+                max={duration || 100}
+                step={1}
+                onValueChange={([v]) => seekTo(v)}
+                className="w-full h-1.5 mb-2"
+              />
+            </div>
 
             {/* Controls */}
             <div className="flex items-center justify-between">

@@ -99,8 +99,13 @@
 
   /* Smaller slider thumb for player */
   .player-slider [data-orientation="horizontal"] > span > span {
-    width: 10px !important;
-    height: 10px !important;
+    width: 8px !important;
+    height: 8px !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+  .player-slider [data-orientation="horizontal"] {
+    height: 3px !important;
   }
 
   .safe-bottom {

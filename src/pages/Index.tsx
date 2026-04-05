@@ -45,12 +45,15 @@ export default function HomePage() {
       .map(([artist]) => artist);
 
     topArtists.forEach(artist => {
-      personalQueries.push({ title: `More from ${artist}`, query: `${artist} songs official audio` });
+      personalQueries.push({ title: `More from ${artist}`, query: `${artist} official audio` });
     });
 
     searchHistory.slice(0, 2).forEach(q => {
       if (!topArtists.some(a => q.toLowerCase().includes(a.toLowerCase()))) {
-        personalQueries.push({ title: `Because you searched "${q}"`, query: `${q} similar songs official audio` });
+        // Clean the query - only use the original search term
+        const cleanQuery = q.replace(/\s*(similar songs|official audio|songs)\s*/gi, '').trim();
+        const displayQuery = cleanQuery || q;
+        personalQueries.push({ title: `Because you searched "${displayQuery}"`, query: `${displayQuery} similar songs` });
       }
     });
 

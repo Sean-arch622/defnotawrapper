@@ -107,6 +107,25 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     if (progressInterval.current) clearInterval(progressInterval.current);
   }, []);
 
+  // Web Lock for background playback
+  const acquireWakeLock = useCallback(() => {
+    if (wakeLockRef.current) return;
+    if ('locks' in navigator) {
+      const controller = new AbortController();
+      wakeLockRef.current = controller;
+      navigator.locks.request('player-wake-lock', { signal: controller.signal }, () =>
+        new Promise<void>(() => {}) // hold indefinitely until aborted
+      ).catch(() => {});
+    }
+  }, []);
+
+  const releaseWakeLock = useCallback(() => {
+    if (wakeLockRef.current) {
+      wakeLockRef.current.abort();
+      wakeLockRef.current = null;
+    }
+  }, []);
+
   const playNext = useCallback(() => {
     if (queue.length === 0) return;
     let nextIdx: number;

@@ -97,29 +97,6 @@
     box-shadow: 0 0 8px hsl(var(--primary) / 0.6), 0 0 16px hsl(var(--primary) / 0.3);
   }
 
-  /* Minimal player slider */
-  .player-slider [data-orientation="horizontal"] {
-    height: 4px !important;
-    cursor: pointer;
-  }
-  .player-slider [data-orientation="horizontal"] > span:first-child {
-    height: 4px !important;
-    border-radius: 9999px !important;
-  }
-  .player-slider [data-orientation="horizontal"] > span:first-child > span {
-    border-radius: 9999px !important;
-  }
-  .player-slider [data-orientation="horizontal"] > span:last-child {
-    width: 10px !important;
-    height: 10px !important;
-    border: none !important;
-    box-shadow: none !important;
-    background: hsl(var(--primary)) !important;
-    top: 50% !important;
-    transform: translateY(-50%) translateX(-50%) !important;
-    border-radius: 9999px !important;
-  }
-
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }

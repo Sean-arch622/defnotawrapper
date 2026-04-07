@@ -203,7 +203,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         },
       },
     });
-  }, [volume, isMuted, repeat, startProgressTracking, playNext]);
+  }, [volume, isMuted, repeat, startProgressTracking, playNext, acquireWakeLock]);
 
   const play = useCallback((track: Track, trackList?: Track[]) => {
     setCurrentTrack(track);

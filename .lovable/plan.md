@@ -1,66 +1,40 @@
 
-# YouTube Music Wrapper App
 
-## Architecture
-- **Pages**: Home, Search, Library, Settings, Playlist Detail
-- **Persistent UI**: Left sidebar navigation + bottom player bar (always visible)
-- **State**: React context for player state, playlists, and theme
-- **Storage**: localStorage for playlists, liked songs, history, theme, API key, and search cache
+# Fix Player Slider, Remove Import/Export, Background Playback
 
-## Core Features
+## 1. Fix the progress slider
 
-### 1. YouTube Integration
-- Settings page with API key input field (stored in localStorage)
-- YouTube Data API v3 for search (songs, artists, albums)
-- YouTube IFrame Player API for audio playback (hidden 0x0 player)
-- Aggressive caching of search results in localStorage to conserve API quota (~100 searches/day limit)
+The current slider uses Radix's `Slider` component with CSS overrides that cause visual glitches — the thumb is a black dot that doesn't align with the track, and the track itself appears disconnected.
 
-### 2. Player Bar (fixed bottom)
-- Left: thumbnail, title, artist
-- Center: prev, rewind 10s, play/pause, forward 10s, next + seekable progress bar with timestamps
-- Right: volume slider + mute toggle, shuffle, repeat (off → all → one), queue drawer button
-- Glassmorphism/frosted blur effect on the bar
-- Framer Motion micro-animations on controls
+**Fix**: Replace the CSS overrides in `index.css` with proper inline styling. Make the thumb a small green (primary-colored) circle, and ensure the track is a continuous bar with the filled portion in primary color and the unfilled portion in a muted grey. Reduce track height to ~3px with an 8px green thumb — no border, no ring.
 
-### 3. Best-Effort Ad Handling
-- Monitor IFrame `onStateChange` events for unexpected state changes
-- Auto-mute during detected ad states, auto-skip when possible
-- Toast notification ("Ad Skipped") when triggered
-- Restore volume after ad completes
+Changes:
+- **`src/index.css`**: Update `.player-slider` styles — set thumb background to `hsl(var(--primary))`, remove border, ensure consistent height
+- **`src/components/PlayerBar.tsx`**: Keep the `Slider` but ensure the wrapper class applies correctly
 
-### 4. Queue System
-- Side drawer showing current queue
-- Drag-to-reorder tracks
-- Play from any position in queue
+## 2. Remove Import/Export from Settings
 
-### 5. Playlists & Library
-- Create, rename, delete playlists (localStorage)
-- "Add to Playlist" option on every track
-- Default "Liked Songs" playlist with heart icon toggle on all tracks
-- Playlist detail view — play from any track
-- All playlists listed in left sidebar
+Remove the Export and Import buttons (and the hidden file input) from `src/pages/Settings.tsx` in the "Data" section. Keep only the "Clear Play History" button.
 
-### 6. Home Page / Discovery
-- Search bar at top
-- Trending/popular sections (pre-built YouTube queries like "official audio 2024")
-- Genre buttons (Pop, Hip-Hop, Lo-fi, Rock, Electronic, etc.) that trigger search
-- "Recently Played" section from localStorage history
+## 3. Background playback on Android (sleep mode)
 
-### 7. Light & Dark Theme
-- Toggle in top-right corner (sun/moon icon)
-- Dark: deep grey backgrounds (#0f0f0f, #1a1a1a), white text, electric blue accent
-- Light: white/soft grey (#f5f5f5, #ffffff), dark text, same accent
-- Persisted in localStorage, defaults to system preference
+The YouTube IFrame Player API runs inside a web page. When an Android device sleeps, the browser tab gets suspended and the iframe stops. This is a **browser-level limitation** that code alone cannot fully solve.
 
-### 8. Settings Page
-- API key input
-- Theme toggle
-- Clear history button
-- Export/import playlists as JSON
+**What we can do in code:**
+- Add a **Web Lock** (`navigator.locks.request`) to signal the browser that work is in progress — this helps prevent tab suspension on some Android browsers
+- Add a `visibilitychange` listener that attempts to resume playback when the page becomes visible again (recovery after suspension)
+- Ensure the **Media Session API** metadata is always set (already done) — this is the primary mechanism that keeps audio alive on Android Chrome
 
-## Design
-- Clean, minimal Spotify/Apple Music-inspired UI
-- Inter font, rounded cards, frosted glass player bar
-- Framer Motion for hover/click animations and page transitions
-- Left sidebar navigation, scrollable main content area
-- No YouTube branding visible anywhere
+**What the user needs to do:**
+- On Android Chrome, ensure the site is **installed as a PWA** (Add to Home Screen) — PWAs get better background audio treatment
+- Disable battery optimization for the browser app in Android Settings
+
+Changes:
+- **`src/contexts/PlayerContext.tsx`**: Add Web Lock acquisition when playing, release when paused. Add `visibilitychange` recovery handler.
+
+## Files to modify
+1. `src/index.css` — fix `.player-slider` thumb color to green
+2. `src/components/PlayerBar.tsx` — minor slider class cleanup
+3. `src/pages/Settings.tsx` — remove Export/Import buttons
+4. `src/contexts/PlayerContext.tsx` — add Web Lock + visibility recovery for background playback
+

@@ -161,6 +161,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
           startProgressTracking();
           storage.addToHistory(track);
           updateMediaSession(track, true);
+          acquireWakeLock();
         },
         onStateChange: (e: any) => {
           const state = e.data;

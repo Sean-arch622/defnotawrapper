@@ -99,14 +99,25 @@
 
   /* Minimal player slider */
   .player-slider [data-orientation="horizontal"] {
-    height: 3px !important;
+    height: 4px !important;
+    cursor: pointer;
   }
-  .player-slider [data-orientation="horizontal"] > span > span {
-    width: 8px !important;
-    height: 8px !important;
+  .player-slider [data-orientation="horizontal"] > span:first-child {
+    height: 4px !important;
+    border-radius: 9999px !important;
+  }
+  .player-slider [data-orientation="horizontal"] > span:first-child > span {
+    border-radius: 9999px !important;
+  }
+  .player-slider [data-orientation="horizontal"] > span:last-child {
+    width: 10px !important;
+    height: 10px !important;
     border: none !important;
     box-shadow: none !important;
     background: hsl(var(--primary)) !important;
+    top: 50% !important;
+    transform: translateY(-50%) translateX(-50%) !important;
+    border-radius: 9999px !important;
   }
 
   .safe-bottom {

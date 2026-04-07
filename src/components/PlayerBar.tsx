@@ -59,13 +59,13 @@ export function PlayerBar({ onQueueOpen }: PlayerBarProps) {
             </div>
 
             {/* Seekable slider */}
-            <div className="player-slider">
+            <div>
               <Slider
                 value={[progress]}
                 max={duration || 100}
                 step={1}
                 onValueChange={([v]) => seekTo(v)}
-                className="w-full h-1.5 mb-2"
+                className="w-full mb-2"
               />
             </div>
 

@@ -237,25 +237,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     loadAndPlay(track);
   }, [loadAndPlay, queue]);
 
-  // Web Lock for background playback
-  const acquireWakeLock = useCallback(() => {
-    if (wakeLockRef.current) return;
-    if ('locks' in navigator) {
-      const controller = new AbortController();
-      wakeLockRef.current = controller;
-      navigator.locks.request('player-wake-lock', { signal: controller.signal }, () =>
-        new Promise<void>(() => {}) // hold indefinitely until aborted
-      ).catch(() => {});
-    }
-  }, []);
-
-  const releaseWakeLock = useCallback(() => {
-    if (wakeLockRef.current) {
-      wakeLockRef.current.abort();
-      wakeLockRef.current = null;
-    }
-  }, []);
-
   // Visibility recovery - resume playback when app returns to foreground
   useEffect(() => {
     const handler = () => {

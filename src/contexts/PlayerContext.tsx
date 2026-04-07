@@ -217,17 +217,53 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     loadAndPlay(track);
   }, [loadAndPlay, queue]);
 
+  // Web Lock for background playback
+  const acquireWakeLock = useCallback(() => {
+    if (wakeLockRef.current) return;
+    if ('locks' in navigator) {
+      const controller = new AbortController();
+      wakeLockRef.current = controller;
+      navigator.locks.request('player-wake-lock', { signal: controller.signal }, () =>
+        new Promise<void>(() => {}) // hold indefinitely until aborted
+      ).catch(() => {});
+    }
+  }, []);
+
+  const releaseWakeLock = useCallback(() => {
+    if (wakeLockRef.current) {
+      wakeLockRef.current.abort();
+      wakeLockRef.current = null;
+    }
+  }, []);
+
+  // Visibility recovery - resume playback when app returns to foreground
+  useEffect(() => {
+    const handler = () => {
+      if (document.visibilityState === 'visible' && currentTrack && isPlaying) {
+        const state = playerRef.current?.getPlayerState?.();
+        const YT = (window as any).YT;
+        if (YT && state !== undefined && state !== YT.PlayerState.PLAYING) {
+          playerRef.current?.playVideo?.();
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handler);
+    return () => document.removeEventListener('visibilitychange', handler);
+  }, [currentTrack, isPlaying]);
+
   const pause = useCallback(() => {
     playerRef.current?.pauseVideo?.();
     setIsPlaying(false);
     stopProgressTracking();
-  }, [stopProgressTracking]);
+    releaseWakeLock();
+  }, [stopProgressTracking, releaseWakeLock]);
 
   const resume = useCallback(() => {
     playerRef.current?.playVideo?.();
     setIsPlaying(true);
     startProgressTracking();
-  }, [startProgressTracking]);
+    acquireWakeLock();
+  }, [startProgressTracking, acquireWakeLock]);
 
   const togglePlay = useCallback(() => {
     isPlaying ? pause() : resume();

@@ -1,6 +1,5 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useTheme, ACCENT_COLORS } from '@/contexts/ThemeContext';
-import { usePlaylist } from '@/contexts/PlaylistContext';
 import { storage } from '@/lib/storage';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';

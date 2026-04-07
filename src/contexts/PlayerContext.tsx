@@ -61,6 +61,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [repeat, setRepeat] = useState<RepeatMode>('off');
   const [queue, setQueueState] = useState<Track[]>([]);
   const [queueIndex, setQueueIndex] = useState(-1);
+  const wakeLockRef = useRef<AbortController | null>(null);
 
   const playerRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);

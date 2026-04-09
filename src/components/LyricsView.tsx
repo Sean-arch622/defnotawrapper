@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { usePlayer } from '@/contexts/PlayerContext';
+import { fetchLyrics } from '@/lib/lyrics';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -12,37 +13,24 @@ interface LyricsViewProps {
 export function LyricsView({ open, onClose }: LyricsViewProps) {
   const { currentTrack } = usePlayer();
   const [lyrics, setLyrics] = useState<string | null>(null);
+  const [source, setSource] = useState<string>('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!open || !currentTrack) return;
     setLoading(true);
     setLyrics(null);
+    setSource('');
 
-    const cleanTitle = currentTrack.title
-      .replace(/\s*\(?(official\s*(music\s*)?video|official\s*audio|lyric\s*video|lyrics?|audio|mv|hd|hq|4k|ft\..*|feat\..*)\)?/gi, '')
-      .replace(/\s*\[.*?\]/g, '')
-      .trim();
-    const artist = currentTrack.artist;
-
-    // Try multiple lyrics sources
-    const tryLyricsOvh = () =>
-      fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(cleanTitle)}`)
-        .then(r => { if (!r.ok) throw new Error(); return r.json(); })
-        .then(d => d.lyrics);
-
-    const trySpotifyLyrics = () =>
-      fetch(`https://spotify-lyrics-api-yeah.vercel.app/?title=${encodeURIComponent(cleanTitle)}&artist=${encodeURIComponent(artist)}`)
-        .then(r => { if (!r.ok) throw new Error(); return r.json(); })
-        .then(d => {
-          if (d.error || !d.lyrics) throw new Error();
-          return d.lyrics.map((l: any) => l.words).join('\n');
-        });
-
-    trySpotifyLyrics()
-      .catch(() => tryLyricsOvh())
-      .then(text => setLyrics(text || 'No lyrics found.'))
-      .catch(() => setLyrics('Lyrics not available for this track.'))
+    fetchLyrics(currentTrack.title, currentTrack.artist, currentTrack.videoId)
+      .then(result => {
+        if (result) {
+          setLyrics(result.lyrics);
+          setSource(result.source);
+        } else {
+          setLyrics('Lyrics not available for this track.');
+        }
+      })
       .finally(() => setLoading(false));
   }, [open, currentTrack?.id]);
 
@@ -65,19 +53,28 @@ export function LyricsView({ open, onClose }: LyricsViewProps) {
               <p className="text-sm font-semibold truncate text-foreground">
                 {currentTrack?.title}
               </p>
+              <p className="text-xs text-muted-foreground truncate">{currentTrack?.artist}</p>
             </div>
             <div className="w-9" />
           </div>
 
           <div className="flex-1 overflow-y-auto px-6 pb-8">
             {loading ? (
-              <div className="flex justify-center py-20">
+              <div className="flex flex-col items-center justify-center py-20 gap-3">
                 <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <p className="text-xs text-muted-foreground">Searching for lyrics...</p>
               </div>
             ) : (
-              <p className="text-base leading-8 text-foreground/80 whitespace-pre-line">
-                {lyrics}
-              </p>
+              <>
+                <p className="text-base leading-8 text-foreground/80 whitespace-pre-line">
+                  {lyrics}
+                </p>
+                {source && lyrics && !lyrics.includes('not available') && (
+                  <p className="text-[10px] text-muted-foreground/50 mt-6 text-center">
+                    via {source}
+                  </p>
+                )}
+              </>
             )}
           </div>
         </motion.div>

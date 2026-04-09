@@ -186,8 +186,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
           const state = e.data;
           if (state === YT.PlayerState.ENDED) {
             if (repeat === 'one') {
-              e.target.seekTo(0);
-              e.target.playVideo();
+              e.target.seekTo(0, true);
+              setTimeout(() => {
+                e.target.playVideo();
+                setIsPlaying(true);
+                startProgressTracking();
+              }, 100);
             } else {
               playNext();
             }

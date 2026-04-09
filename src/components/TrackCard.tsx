@@ -1,7 +1,8 @@
 import { usePlayer } from '@/contexts/PlayerContext';
 import { usePlaylist } from '@/contexts/PlaylistContext';
 import { Track } from '@/lib/storage';
-import { Heart, Plus, MoreHorizontal, ListPlus } from 'lucide-react';
+import { Heart, Plus, MoreHorizontal, ListPlus, Download } from 'lucide-react';
+import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import {
@@ -79,6 +80,28 @@ export function TrackCard({ track, trackList, index, showRemove, onRemove }: Tra
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => addToQueue(track)}>
               <ListPlus className="h-4 w-4 mr-2" /> Add to Queue
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => {
+              const url = `https://cobalt-api.kityune.com/api/json`;
+              toast.promise(
+                fetch(url, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                  body: JSON.stringify({ url: `https://www.youtube.com/watch?v=${track.videoId}`, isAudioOnly: true }),
+                }).then(r => r.json()).then(data => {
+                  if (data.url) {
+                    const a = document.createElement('a');
+                    a.href = data.url;
+                    a.download = `${track.title} - ${track.artist}.mp3`;
+                    a.click();
+                  } else {
+                    throw new Error('Download unavailable');
+                  }
+                }),
+                { loading: 'Preparing download...', success: 'Download started!', error: 'Download failed' }
+              );
+            }}>
+              <Download className="h-4 w-4 mr-2" /> Download MP3
             </DropdownMenuItem>
             {playlists.length > 0 && (
               <DropdownMenuSub>

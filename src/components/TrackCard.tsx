@@ -82,24 +82,30 @@ export function TrackCard({ track, trackList, index, showRemove, onRemove }: Tra
               <ListPlus className="h-4 w-4 mr-2" /> Add to Queue
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => {
-              const url = `https://cobalt-api.kityune.com/api/json`;
-              toast.promise(
-                fetch(url, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                  body: JSON.stringify({ url: `https://www.youtube.com/watch?v=${track.videoId}`, isAudioOnly: true }),
-                }).then(r => r.json()).then(data => {
+              toast.loading('Preparing download...');
+              const apiUrl = `https://api.cobalt.tools/api/json`;
+              fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({ url: `https://www.youtube.com/watch?v=${track.videoId}`, vCodec: 'h264', isAudioOnly: true, aFormat: 'mp3' }),
+              })
+                .then(r => r.json())
+                .then(data => {
+                  toast.dismiss();
                   if (data.url) {
-                    const a = document.createElement('a');
-                    a.href = data.url;
-                    a.download = `${track.title} - ${track.artist}.mp3`;
-                    a.click();
+                    window.open(data.url, '_blank');
+                    toast.success('Download started!');
                   } else {
-                    throw new Error('Download unavailable');
+                    // Fallback: open a third-party download site
+                    window.open(`https://ssyoutube.com/watch?v=${track.videoId}`, '_blank');
+                    toast.success('Opening download page...');
                   }
-                }),
-                { loading: 'Preparing download...', success: 'Download started!', error: 'Download failed' }
-              );
+                })
+                .catch(() => {
+                  toast.dismiss();
+                  window.open(`https://ssyoutube.com/watch?v=${track.videoId}`, '_blank');
+                  toast.success('Opening download page...');
+                });
             }}>
               <Download className="h-4 w-4 mr-2" /> Download MP3
             </DropdownMenuItem>

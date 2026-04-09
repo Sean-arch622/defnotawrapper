@@ -43,7 +43,8 @@ export async function searchYouTube(query: string, saveToHistory = true): Promis
   // Save search query for personalization (only user-initiated searches)
   if (saveToHistory) storage.addSearchQuery(query);
 
-  const searchUrl = `${API_BASE}/search?part=snippet&type=video&videoCategoryId=10&maxResults=25&q=${encodeURIComponent(query)}&key=${apiKey}`;
+  const musicQuery = /\b(song|music|audio|official|lyrics?|album|remix)\b/i.test(query) ? query : `${query} song official audio`;
+  const searchUrl = `${API_BASE}/search?part=snippet&type=video&videoCategoryId=10&maxResults=25&q=${encodeURIComponent(musicQuery)}&key=${apiKey}`;
   const searchRes = await fetch(searchUrl);
   if (!searchRes.ok) {
     const err = await searchRes.json().catch(() => ({}));

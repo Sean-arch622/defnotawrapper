@@ -1,7 +1,8 @@
 import { usePlayer } from '@/contexts/PlayerContext';
 import { usePlaylist } from '@/contexts/PlaylistContext';
 import { Track } from '@/lib/storage';
-import { Heart, Plus, MoreHorizontal, ListPlus } from 'lucide-react';
+import { Heart, Plus, MoreHorizontal, ListPlus, Download } from 'lucide-react';
+import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import {

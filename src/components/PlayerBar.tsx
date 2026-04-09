@@ -3,8 +3,10 @@ import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
 import {
   Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, Repeat1,
-  ListMusic,
+  ListMusic, Mic2,
 } from 'lucide-react';
+import { useState } from 'react';
+import { LyricsView } from '@/components/LyricsView';
 import { motion, AnimatePresence } from 'framer-motion';
 
 function formatTime(s: number): string {

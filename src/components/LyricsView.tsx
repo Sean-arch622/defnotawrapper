@@ -19,12 +19,29 @@ export function LyricsView({ open, onClose }: LyricsViewProps) {
     setLoading(true);
     setLyrics(null);
 
-    const artist = encodeURIComponent(currentTrack.artist);
-    const title = encodeURIComponent(currentTrack.title);
+    const cleanTitle = currentTrack.title
+      .replace(/\s*\(?(official\s*(music\s*)?video|official\s*audio|lyric\s*video|lyrics?|audio|mv|hd|hq|4k|ft\..*|feat\..*)\)?/gi, '')
+      .replace(/\s*\[.*?\]/g, '')
+      .trim();
+    const artist = currentTrack.artist;
 
-    fetch(`https://api.lyrics.ovh/v1/${artist}/${title}`)
-      .then(res => res.ok ? res.json() : Promise.reject())
-      .then(data => setLyrics(data.lyrics || 'No lyrics found.'))
+    // Try multiple lyrics sources
+    const tryLyricsOvh = () =>
+      fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(cleanTitle)}`)
+        .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+        .then(d => d.lyrics);
+
+    const trySpotifyLyrics = () =>
+      fetch(`https://spotify-lyrics-api-yeah.vercel.app/?title=${encodeURIComponent(cleanTitle)}&artist=${encodeURIComponent(artist)}`)
+        .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+        .then(d => {
+          if (d.error || !d.lyrics) throw new Error();
+          return d.lyrics.map((l: any) => l.words).join('\n');
+        });
+
+    trySpotifyLyrics()
+      .catch(() => tryLyricsOvh())
+      .then(text => setLyrics(text || 'No lyrics found.'))
       .catch(() => setLyrics('Lyrics not available for this track.'))
       .finally(() => setLoading(false));
   }, [open, currentTrack?.id]);
